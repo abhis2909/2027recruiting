@@ -32,30 +32,30 @@
 </script>
 <style>
   :root{
-    --bg:#F6F1E5;
-    --surface:#FFFEFA;
-    --surface-2:#EFE5CE;
-    --ink:#241F17;
-    --ink-muted:#6E6455;
-    --border:#E1D3B3;
-    --border-strong:#CBB689;
-    --accent:#6B3FA0;
-    --accent-strong:#43215F;
-    --accent-soft:#EFE3F7;
+    --bg:#FFFFFF;
+    --surface:#FFFFFF;
+    --surface-2:#F4F4F4;
+    --ink:#1A1A1A;
+    --ink-muted:#5C5C5C;
+    --border:#E2E2E2;
+    --border-strong:#C9C9C9;
+    --accent:#ED1B2F;
+    --accent-strong:#B30F20;
+    --accent-soft:#FCE4E6;
     --success:#2E7D4F;
     --success-soft:#DFF1E4;
     --warning:#B4740E;
     --warning-soft:#F7E8CE;
     --danger:#B23A2E;
     --danger-soft:#F6DEDA;
-    --slate:#7A6F5B;
-    --slate-soft:#EAE1C7;
-    --rule:#C89A2E;
-    --rule-soft:#F8EDCE;
-    --masthead-bg:#2C1846;
-    --masthead-ink:#F5ECD8;
-    --masthead-ink-muted:#C6AFDE;
-    --shadow: 0 1px 2px rgba(60,44,16,0.08), 0 8px 20px rgba(60,44,16,0.08);
+    --slate:#6E6E6E;
+    --slate-soft:#ECECEC;
+    --rule:#1A1A1A;
+    --rule-soft:#FCE4E6;
+    --masthead-bg:#ED1B2F;
+    --masthead-ink:#FFFFFF;
+    --masthead-ink-muted:#FBD9DC;
+    --shadow: 0 1px 2px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.08);
     --font-display:'Fraunces', 'Iowan Old Style', Georgia, serif;
     --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -65,56 +65,56 @@
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#1B160F;
-      --surface:#241D14;
-      --surface-2:#2E2519;
-      --ink:#EEE4CF;
-      --ink-muted:#A9997D;
-      --border:#3C3020;
-      --border-strong:#4E3F29;
-      --accent:#B98EE0;
-      --accent-strong:#D8BCF2;
-      --accent-soft:#2E2140;
+      --bg:#141414;
+      --surface:#1E1E1E;
+      --surface-2:#282828;
+      --ink:#F0F0F0;
+      --ink-muted:#A8A8A8;
+      --border:#3A3A3A;
+      --border-strong:#4C4C4C;
+      --accent:#FF5468;
+      --accent-strong:#FF8090;
+      --accent-soft:#3A1015;
       --success:#5FBE83;
       --success-soft:#1C3227;
       --warning:#E3A73B;
       --warning-soft:#332608;
       --danger:#E2685A;
       --danger-soft:#331F1B;
-      --slate:#A0937A;
-      --slate-soft:#2C2417;
-      --rule:#E6C158;
-      --rule-soft:#3A2E12;
-      --masthead-bg:#170D26;
-      --masthead-ink:#F0E6D2;
-      --masthead-ink-muted:#C9AE86;
+      --slate:#9E9E9E;
+      --slate-soft:#2A2A2A;
+      --rule:#F0F0F0;
+      --rule-soft:#3A1015;
+      --masthead-bg:#C81430;
+      --masthead-ink:#FFFFFF;
+      --masthead-ink-muted:#F3B9C0;
       --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.3);
     }
   }
   :root[data-theme="dark"]{
-    --bg:#1B160F;
-    --surface:#241D14;
-    --surface-2:#2E2519;
-    --ink:#EEE4CF;
-    --ink-muted:#A9997D;
-    --border:#3C3020;
-    --border-strong:#4E3F29;
-    --accent:#B98EE0;
-    --accent-strong:#D8BCF2;
-    --accent-soft:#2E2140;
+    --bg:#141414;
+    --surface:#1E1E1E;
+    --surface-2:#282828;
+    --ink:#F0F0F0;
+    --ink-muted:#A8A8A8;
+    --border:#3A3A3A;
+    --border-strong:#4C4C4C;
+    --accent:#FF5468;
+    --accent-strong:#FF8090;
+    --accent-soft:#3A1015;
     --success:#5FBE83;
     --success-soft:#1C3227;
     --warning:#E3A73B;
     --warning-soft:#332608;
     --danger:#E2685A;
     --danger-soft:#331F1B;
-    --slate:#A0937A;
-    --slate-soft:#2C2417;
-    --rule:#E6C158;
-    --rule-soft:#3A2E12;
-    --masthead-bg:#170D26;
-    --masthead-ink:#F0E6D2;
-    --masthead-ink-muted:#C9AE86;
+    --slate:#9E9E9E;
+    --slate-soft:#2A2A2A;
+    --rule:#F0F0F0;
+    --rule-soft:#3A1015;
+    --masthead-bg:#C81430;
+    --masthead-ink:#FFFFFF;
+    --masthead-ink-muted:#F3B9C0;
     --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.3);
   }
 
@@ -156,8 +156,8 @@
     font-size:22px; line-height:1;
     width:42px; height:42px;
     display:flex; align-items:center; justify-content:center;
-    background:rgba(212,175,55,0.14);
-    border:1px solid rgba(212,175,55,0.4);
+    background:rgba(255,255,255,0.16);
+    border:1px solid rgba(255,255,255,0.45);
     border-radius:10px;
     flex:none;
   }
