@@ -731,10 +731,68 @@
     .stat-row{grid-template-columns:repeat(2, minmax(0,1fr));}
     .masthead-inner{flex-direction:column;}
   }
+
+  .link-preview-panel{
+    position:fixed;
+    top:0; right:0; bottom:0;
+    width:min(480px, 92vw);
+    background:var(--surface);
+    border-left:1px solid var(--border-strong);
+    box-shadow:-12px 0 32px rgba(36,31,23,0.18);
+    z-index:500;
+    display:flex; flex-direction:column;
+    transform:translateX(100%);
+    transition:transform 0.16s ease;
+  }
+  .link-preview-panel.is-open{transform:translateX(0);}
+  .link-preview-head{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:14px 14px 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface-2);
+  }
+  .link-preview-titles{flex:1; min-width:0;}
+  .link-preview-firm{font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--ink); line-height:1.25;}
+  .link-preview-role{font-size:12px; color:var(--ink-muted); margin-top:1px;}
+  .link-preview-url{font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .link-preview-close{
+    background:none; border:1px solid var(--border-strong); color:var(--ink-muted);
+    border-radius:999px; width:26px; height:26px; line-height:1; cursor:pointer; font-size:14px; flex-shrink:0;
+  }
+  .link-preview-close:hover{color:var(--ink); background:var(--surface);}
+  .link-preview-actions{padding:9px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .link-preview-open{
+    font-size:12px; font-weight:600; color:var(--accent-strong); text-decoration:none;
+    border:1px solid var(--accent); border-radius:999px; padding:5px 12px; background:var(--accent-soft);
+  }
+  .link-preview-open:hover{background:var(--accent); color:#fff;}
+  .link-preview-hint{font-size:11px; color:var(--ink-muted);}
+  .link-preview-body{flex:1; position:relative; background:var(--surface-2);}
+  .link-preview-body iframe{width:100%; height:100%; border:0; display:block;}
+  @media (hover:none), (pointer:coarse){
+    .link-preview-panel{display:none;}
+  }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div class="link-preview-panel" id="link-preview-panel">
+  <div class="link-preview-head">
+    <div class="link-preview-titles">
+      <div class="link-preview-firm" id="link-preview-firm">Link preview</div>
+      <div class="link-preview-role" id="link-preview-role"></div>
+      <div class="link-preview-url" id="link-preview-url"></div>
+    </div>
+    <button type="button" class="link-preview-close" id="link-preview-close" title="Close">✕</button>
+  </div>
+  <div class="link-preview-actions">
+    <span class="link-preview-hint">Blank? The site is blocking previews.</span>
+    <a class="link-preview-open" id="link-preview-open" href="#" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+  </div>
+  <div class="link-preview-body">
+    <iframe id="link-preview-frame" src="about:blank" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+</div>
 <script type="application/json" id="initial-state">{"applications":[],"contacts":[]}</script>
 <script id="app-script">
 (function(){
@@ -1668,6 +1726,97 @@
   });
 
   var STYLE_TEXT = document.querySelector("style").textContent;
+
+  // ---- Hover-to-preview panel for application/contact links ----
+  (function setupLinkPreview(){
+    var canHover = window.matchMedia && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+    if (!canHover) return; // touch/phone: keep the plain tap-to-open-tab behavior
+
+    var panel = document.getElementById("link-preview-panel");
+    var frame = document.getElementById("link-preview-frame");
+    var firmEl = document.getElementById("link-preview-firm");
+    var roleEl = document.getElementById("link-preview-role");
+    var urlEl = document.getElementById("link-preview-url");
+    var openEl = document.getElementById("link-preview-open");
+    var closeBtn = document.getElementById("link-preview-close");
+
+    var openUrl = null;
+    var showTimer = null;
+    var hideTimer = null;
+
+    function labelFor(pill){
+      var row = findRow(pill);
+      if (row && row.kind === "applications") {
+        return {title: row.item.firm || "Unnamed firm", sub: row.item.role || ""};
+      }
+      if (row && row.kind === "contacts") {
+        return {title: row.item.name || "Unnamed contact", sub: [row.item.firm, row.item.role].filter(Boolean).join(" · ")};
+      }
+      return {title: "Link preview", sub: ""};
+    }
+
+    function openPanel(pill){
+      var url = pill.href;
+      if (!url) return;
+      clearTimeout(hideTimer);
+      var label = labelFor(pill);
+      firmEl.textContent = label.title;
+      roleEl.textContent = label.sub;
+      urlEl.textContent = url;
+      openEl.href = url;
+      if (openUrl !== url) {
+        frame.src = url;
+        openUrl = url;
+      }
+      panel.classList.add("is-open");
+    }
+
+    function scheduleHide(){
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function(){
+        panel.classList.remove("is-open");
+        frame.src = "about:blank";
+        openUrl = null;
+      }, 300);
+    }
+
+    document.addEventListener("mouseover", function(e){
+      var pill = e.target.closest(".link-pill");
+      if (pill) {
+        clearTimeout(showTimer);
+        showTimer = setTimeout(function(){ openPanel(pill); }, 220);
+        return;
+      }
+      if (!e.target.closest(".link-preview-panel")) {
+        clearTimeout(showTimer);
+      }
+    });
+
+    document.addEventListener("mouseout", function(e){
+      var leavingPill = e.target.closest(".link-pill");
+      var leavingPanel = e.target.closest(".link-preview-panel");
+      if (!leavingPill && !leavingPanel) return;
+      var to = e.relatedTarget;
+      if (to && (to.closest && (to.closest(".link-pill") || to.closest(".link-preview-panel")))) return;
+      clearTimeout(showTimer);
+      scheduleHide();
+    });
+
+    closeBtn.addEventListener("click", function(){
+      clearTimeout(hideTimer);
+      panel.classList.remove("is-open");
+      frame.src = "about:blank";
+      openUrl = null;
+    });
+
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape" && panel.classList.contains("is-open")) {
+        panel.classList.remove("is-open");
+        frame.src = "about:blank";
+        openUrl = null;
+      }
+    });
+  })();
 
   mount();
 })();
