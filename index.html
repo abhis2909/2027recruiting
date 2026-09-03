@@ -5,6 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Coverage Book</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script id="firebase-config">
+  // ---- Firebase project config ----
+  // This is what turns on "Sign in with Google" + per-student cloud saving.
+  // Until these placeholders are replaced, the app runs exactly as before
+  // (no login, saves to this browser's localStorage only).
+  //
+  // To enable it: create a free Firebase project, register a Web app in
+  // it, enable Google as a sign-in provider, create a Firestore database,
+  // and paste that web app's config below. Full steps are in README.md.
+  var FIREBASE_CONFIG = {
+    apiKey: "REPLACE_ME",
+    authDomain: "REPLACE_ME.firebaseapp.com",
+    projectId: "REPLACE_ME",
+    storageBucket: "REPLACE_ME.appspot.com",
+    messagingSenderId: "REPLACE_ME",
+    appId: "REPLACE_ME"
+  };
+  var FIREBASE_READY = FIREBASE_CONFIG.apiKey !== "REPLACE_ME";
+  if (FIREBASE_READY && window.firebase) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+  }
+</script>
 <style>
   :root{
     --bg:#F6F1E5;
@@ -772,9 +797,71 @@
   @media (hover:none), (pointer:coarse){
     .link-preview-panel{display:none;}
   }
+
+  #app{display:none;}
+  body[data-auth-state="in"] #app,
+  body[data-auth-state="off"] #app{display:block;}
+
+  .auth-gate{
+    display:none;
+    min-height:100vh;
+    align-items:center; justify-content:center;
+    padding:24px;
+  }
+  body[data-auth-state="gate"] .auth-gate,
+  body[data-auth-state="pending"] .auth-gate{display:flex;}
+  .auth-gate-card{
+    max-width:360px;
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    padding:32px 28px;
+    text-align:center;
+  }
+  .auth-gate-mark{font-size:32px; margin-bottom:6px;}
+  .auth-gate-card h1{font-family:var(--font-display); font-size:22px; margin:0 0 8px;}
+  .auth-gate-card p{font-size:13.5px; color:var(--ink-muted); line-height:1.5; margin:0 0 20px;}
+  .auth-google-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    background:var(--accent); color:#fff; border:none;
+    border-radius:var(--radius-sm);
+    padding:11px 16px;
+    font-family:var(--font-body); font-size:14px; font-weight:600;
+    cursor:pointer;
+  }
+  .auth-google-btn:hover{background:var(--accent-strong);}
+  body[data-auth-state="pending"] .auth-google-btn{visibility:hidden;}
+  .auth-gate-note{color:var(--danger) !important; font-size:12.5px; margin:14px 0 0 !important;}
+  .auth-gate-loading{display:none; font-size:13px; color:var(--ink-muted);}
+  body[data-auth-state="pending"] .auth-gate-loading{display:block;}
+
+  .account-badge{
+    display:flex; align-items:center; gap:8px;
+    margin-left:12px;
+  }
+  .account-avatar{width:22px; height:22px; border-radius:999px; display:block;}
+  .account-email{font-size:12px; color:var(--masthead-ink-muted); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .account-signout{
+    background:none; border:1px solid var(--masthead-ink-muted); color:var(--masthead-ink);
+    border-radius:999px; padding:3px 10px; font-size:11.5px; cursor:pointer;
+  }
+  .account-signout:hover{background:rgba(255,255,255,0.12);}
 </style>
 </head>
-<body>
+<body data-auth-state="off">
+<div class="auth-gate" id="auth-gate">
+  <div class="auth-gate-card">
+    <div class="auth-gate-mark" aria-hidden="true">📒</div>
+    <h1>Coverage Book</h1>
+    <p>Sign in with Google to keep your own applications &amp; contacts saved to your account.</p>
+    <button type="button" class="auth-google-btn" id="auth-google-btn">Sign in with Google</button>
+    <p class="auth-gate-loading">Connecting…</p>
+    <p class="auth-gate-note" id="auth-gate-note"></p>
+  </div>
+</div>
 <div id="app"></div>
 <div class="link-preview-panel" id="link-preview-panel">
   <div class="link-preview-head">
@@ -893,8 +980,10 @@
   var toastTimer = null;
   var capPromise = null;
   var cap = null;
-  var PERSIST_MODE = "pending"; // "cloud" | "local" | "none" | "pending"
+  var PERSIST_MODE = "pending"; // "cloud" | "firebase" | "local" | "none" | "pending"
   var LS_KEY = "coverage-book-state-v1";
+  var CURRENT_USER = null; // Firebase auth user, when signed in
+  var fbDb = null;
 
   function localStorageAvailable(){
     try {
@@ -1389,7 +1478,7 @@
   }
 
   function saveLabel(state){
-    if (state === "saved") return PERSIST_MODE === "local" ? "Saved on this device" : "Saved";
+    if (state === "saved") return PERSIST_MODE === "local" ? "Saved on this device" : PERSIST_MODE === "firebase" ? "Saved to your account" : "Saved";
     if (state === "saving") return "Saving…";
     if (state === "unsaved") return "Unsaved changes";
     if (state === "error") return "Couldn't save — retrying";
@@ -1405,6 +1494,12 @@
     html += "<h1>Coverage Book</h1><p class=\"tagline\">Applications &amp; network — Montreal institutional investing, 2027</p>";
     html += "</div></div>";
     html += '<div class="save-indicator" data-state="' + UI.saveState + '"><span class="dot"></span><span>' + saveLabel(UI.saveState) + "</span></div>";
+    if (CURRENT_USER) {
+      html += '<div class="account-badge">'
+        + (CURRENT_USER.photoURL ? '<img class="account-avatar" src="' + esc(CURRENT_USER.photoURL) + '" alt="">' : "")
+        + '<span class="account-email">' + esc(CURRENT_USER.email || CURRENT_USER.displayName || "") + '</span>'
+        + '<button type="button" class="account-signout" data-action="sign-out">Sign out</button></div>';
+    }
     html += "</div></header>";
 
     html += '<div class="shell">';
@@ -1540,28 +1635,118 @@
       return;
     }
 
+    if (PERSIST_MODE === "firebase") {
+      if (!CURRENT_USER) { UI.saveState = "none"; mount(); return; }
+      UI.saveState = "saving";
+      mount();
+      fbDb.collection("users").doc(CURRENT_USER.uid).set(STATE).then(function(){
+        UI.saveState = "saved";
+        mount();
+      }).catch(function(){
+        UI.saveState = "error";
+        mount();
+        saveTimer = setTimeout(doSave, 4000);
+      });
+      return;
+    }
+
     UI.saveState = "none";
     mount();
   }
 
-  capPromise = (window.claude && window.claude.use) ? window.claude.use("artifact") : Promise.resolve(null);
-  capPromise.then(function(c){
-    cap = c;
-    if (c) {
-      PERSIST_MODE = "cloud";
-    } else if (localStorageAvailable()) {
-      PERSIST_MODE = "local";
-      loadLocalState();
-    } else {
-      PERSIST_MODE = "none";
-    }
-    if (UI.saveState === "unsaved") { doSave(); } else { UI.saveState = PERSIST_MODE === "none" ? "none" : "saved"; mount(); }
-  }).catch(function(){
-    if (localStorageAvailable()) { PERSIST_MODE = "local"; loadLocalState(); }
-    else { PERSIST_MODE = "none"; }
-    UI.saveState = PERSIST_MODE === "none" ? "none" : "saved";
-    mount();
-  });
+  function initLegacyPersistence(){
+    capPromise = (window.claude && window.claude.use) ? window.claude.use("artifact") : Promise.resolve(null);
+    capPromise.then(function(c){
+      cap = c;
+      if (c) {
+        PERSIST_MODE = "cloud";
+      } else if (localStorageAvailable()) {
+        PERSIST_MODE = "local";
+        loadLocalState();
+      } else {
+        PERSIST_MODE = "none";
+      }
+      if (UI.saveState === "unsaved") { doSave(); } else { UI.saveState = PERSIST_MODE === "none" ? "none" : "saved"; mount(); }
+    }).catch(function(){
+      if (localStorageAvailable()) { PERSIST_MODE = "local"; loadLocalState(); }
+      else { PERSIST_MODE = "none"; }
+      UI.saveState = PERSIST_MODE === "none" ? "none" : "saved";
+      mount();
+    });
+  }
+
+  // ---- Firebase auth + per-student cloud storage ----
+  function initFirebaseAuth(){
+    fbDb = firebase.firestore();
+    document.body.dataset.authState = "pending";
+
+    var googleBtn = document.getElementById("auth-google-btn");
+    var note = document.getElementById("auth-gate-note");
+    googleBtn.addEventListener("click", function(){
+      note.textContent = "";
+      var provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).catch(function(err){
+        note.textContent = "Sign-in failed: " + ((err && err.message) || "please try again.");
+      });
+    });
+
+    firebase.auth().onAuthStateChanged(function(user){
+      if (!user) {
+        CURRENT_USER = null;
+        PERSIST_MODE = "pending";
+        document.body.dataset.authState = "gate";
+        return;
+      }
+      CURRENT_USER = user;
+      document.body.dataset.authState = "in";
+      loadFirebaseState(user);
+    });
+  }
+
+  function loadFirebaseState(user){
+    var docRef = fbDb.collection("users").doc(user.uid);
+    docRef.get().then(function(snap){
+      if (snap.exists) {
+        STATE = snap.data();
+        if (!STATE.roleNotes) STATE.roleNotes = {};
+        PERSIST_MODE = "firebase";
+        UI.saveState = "saved";
+        mount();
+        return;
+      }
+      // First sign-in: carry over anything already sitting in this
+      // browser's local copy, so nothing gets lost when login turns on.
+      var migrated = false;
+      if (localStorageAvailable()) {
+        try {
+          var raw = window.localStorage.getItem(LS_KEY);
+          if (raw) {
+            var local = JSON.parse(raw);
+            if ((local.applications && local.applications.length) || (local.contacts && local.contacts.length)) {
+              STATE = local;
+              if (!STATE.roleNotes) STATE.roleNotes = {};
+              migrated = true;
+            }
+          }
+        } catch (e) {}
+      }
+      PERSIST_MODE = "firebase";
+      UI.saveState = "unsaved";
+      mount();
+      doSave();
+      if (migrated) showToast("Brought over your saved data from this browser.");
+    }).catch(function(){
+      PERSIST_MODE = "firebase";
+      UI.saveState = "error";
+      mount();
+    });
+  }
+
+  if (FIREBASE_READY && window.firebase) {
+    initFirebaseAuth();
+  } else {
+    initLegacyPersistence();
+  }
 
   function showToast(message, undoFn){
     clearTimeout(toastTimer);
@@ -1589,7 +1774,9 @@
     if (!actionEl) return;
     var action = actionEl.dataset.action;
 
-    if (action === "switch-tab") {
+    if (action === "sign-out") {
+      if (window.firebase && firebase.auth) firebase.auth().signOut();
+    } else if (action === "switch-tab") {
       UI.tab = actionEl.dataset.tab;
       UI.search = "";
       UI.filter = "all";
