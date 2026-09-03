@@ -808,6 +808,66 @@
     border-radius:999px; padding:3px 10px; font-size:11.5px; cursor:pointer;
   }
   .account-signout:hover{background:rgba(255,255,255,0.12);}
+
+  .import-modal{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(20,20,20,0.5);
+    z-index:600;
+    align-items:flex-start; justify-content:center;
+    padding:5vh 16px;
+    overflow-y:auto;
+  }
+  .import-modal.is-open{display:flex;}
+  .import-modal-card{
+    width:100%; max-width:640px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+  }
+  .import-modal-head{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    padding:18px 20px 4px;
+  }
+  .import-modal-head h2{font-family:var(--font-display); font-size:19px; margin:0;}
+  .import-modal-close{
+    background:none; border:1px solid var(--border-strong); color:var(--ink-muted);
+    border-radius:999px; width:26px; height:26px; line-height:1; cursor:pointer; font-size:14px; flex-shrink:0;
+  }
+  .import-modal-close:hover{color:var(--ink); background:var(--surface-2);}
+  .import-modal-body{padding:6px 20px 4px; font-size:13px; color:var(--ink);}
+  .import-modal-body p{color:var(--ink-muted); font-size:12.5px; line-height:1.5;}
+  .import-modal-body a{color:var(--accent-strong);}
+  .import-file-input{
+    display:block; width:100%; font-size:13px; font-family:var(--font-body);
+    padding:9px; border:1px dashed var(--border-strong); border-radius:var(--radius-sm);
+    background:var(--surface-2); color:var(--ink); margin-top:8px;
+  }
+  .import-map-grid{
+    display:grid; grid-template-columns:auto 1fr; gap:8px 12px;
+    align-items:center; margin:14px 0;
+    font-size:12.5px;
+  }
+  .import-map-grid label{color:var(--ink-muted); font-weight:600;}
+  .import-map-grid select{
+    font-family:var(--font-body); font-size:12.5px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:6px 8px;
+  }
+  .import-track-row{display:flex; align-items:center; gap:8px; margin:10px 0 4px;}
+  .import-preview-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-sm); margin:10px 0;}
+  .import-preview-wrap table{width:100%; min-width:0; font-size:11.5px;}
+  .import-preview-wrap th, .import-preview-wrap td{
+    padding:5px 8px; border-bottom:1px solid var(--border);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;
+  }
+  .import-error{color:var(--danger); font-size:12.5px; margin:8px 0 0;}
+  .import-modal-foot{
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    padding:12px 20px 20px;
+  }
+  .import-summary{font-size:12px; color:var(--ink-muted); margin-right:auto;}
 </style>
 </head>
 <body data-auth-state="off">
@@ -822,6 +882,47 @@
   </div>
 </div>
 <div id="app"></div>
+<div class="import-modal" id="import-modal">
+  <div class="import-modal-card">
+    <div class="import-modal-head">
+      <h2>Import applications from CSV</h2>
+      <button type="button" class="import-modal-close" id="import-modal-close" title="Close">✕</button>
+    </div>
+    <div class="import-modal-body">
+      <p>
+        Works with LinkedIn's <strong>Saved Jobs.csv</strong> or <strong>Job Applications.csv</strong>
+        from your data export (LinkedIn → Settings &amp; Privacy → Data privacy →
+        <em>Get a copy of your data</em>), or any CSV with company/role columns.
+      </p>
+      <input type="file" accept=".csv,text/csv" class="import-file-input" id="import-file-input">
+      <div id="import-map-area" hidden>
+        <div class="import-map-grid" id="import-map-grid"></div>
+        <div class="import-track-row">
+          <label for="import-track-select" style="color:var(--ink-muted); font-weight:600;">Track for imported rows</label>
+          <select id="import-track-select">
+            <option value="Internship">Internship</option>
+            <option value="Full-Time">Full-Time</option>
+            <option value="Off-Cycle">Off-Cycle</option>
+          </select>
+        </div>
+        <div class="import-track-row">
+          <label style="color:var(--ink-muted); font-weight:600;">Date column means</label>
+          <select id="import-datekind-select">
+            <option value="saved">Saved (leave status as Not Started)</option>
+            <option value="applied">Already applied (mark status as Applied)</option>
+          </select>
+        </div>
+        <div class="import-preview-wrap"><table id="import-preview-table"></table></div>
+      </div>
+      <div class="import-error" id="import-error" hidden></div>
+    </div>
+    <div class="import-modal-foot">
+      <span class="import-summary" id="import-summary"></span>
+      <button type="button" class="btn-ghost" id="import-cancel" style="border-radius:999px;padding:8px 14px;">Cancel</button>
+      <button type="button" class="btn" id="import-confirm" disabled>Import</button>
+    </div>
+  </div>
+</div>
 <script type="application/json" id="initial-state">{"applications":[],"contacts":[]}</script>
 <script id="app-script">
 (function(){
@@ -1282,6 +1383,7 @@
     }).join("") + "</div>";
     html += '<div class="spacer"></div>';
     if (hasExamples) html += '<button class="btn-ghost" style="border-radius:999px;padding:8px 14px;" data-action="clear-examples">Clear example rows</button>';
+    html += '<button class="btn-ghost" style="border-radius:999px;padding:8px 14px;" data-action="open-import">⇪ Import CSV</button>';
     html += '<button class="btn" data-action="add-application">+ Add application</button>';
     html += '<div class="toolbar-secondary">';
     html += '<span class="filter-label">Track</span><div class="chip-row">' + TRACK_FILTERS.map(function(f){
@@ -1740,6 +1842,8 @@
       UI.focusTarget = {id:na.id, field:"firm"};
       mount();
       scheduleSave();
+    } else if (action === "open-import") {
+      openImportModal();
     } else if (action === "add-contact") {
       var nc = newContact();
       STATE.contacts.unshift(nc);
@@ -1853,6 +1957,222 @@
       }
     }
   });
+
+  // ---- CSV import (LinkedIn "Saved Jobs" / "Job Applications" export, or any CSV) ----
+  var IMPORT_STATE = null;
+  var IMPORT_FIELDS = [
+    {key:"firm", label:"Company / Firm *", aliases:["Company Name","Company","Organization","Employer","Firm"]},
+    {key:"role", label:"Job Title / Role *", aliases:["Job Title","Title","Position","Role"]},
+    {key:"link", label:"Link (optional)", aliases:["Job Url","Job URL","URL","Link","Job Link"]},
+    {key:"date", label:"Date (optional)", aliases:["Saved Date","Date Saved","Application Date","Applied Date","Date Applied","Created At","Date"]}
+  ];
+
+  function parseCSV(text){
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuotes = false;
+    var i = 0, len = text.length;
+    while (i < len) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ",") { row.push(field); field = ""; i++; continue; }
+      if (c === "\r") { i++; continue; }
+      if (c === "\n") { row.push(field); field = ""; rows.push(row); row = []; i++; continue; }
+      field += c; i++;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    rows = rows.filter(function(r){ return !(r.length === 1 && r[0].trim() === ""); });
+    if (!rows.length) return {headers:[], rows:[]};
+    var headers = rows[0].map(function(h){ return (h || "").trim(); });
+    return {headers:headers, rows:rows.slice(1)};
+  }
+
+  function guessColumn(headers, aliases){
+    var norm = headers.map(function(h){ return h.toLowerCase().replace(/[^a-z0-9]/g, ""); });
+    for (var a = 0; a < aliases.length; a++) {
+      var idx = norm.indexOf(aliases[a].toLowerCase().replace(/[^a-z0-9]/g, ""));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+
+  function normalizeImportDate(raw){
+    if (!raw) return "";
+    var t = Date.parse(raw);
+    if (isNaN(t)) return "";
+    var d = new Date(t);
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + mm + "-" + dd;
+  }
+
+  function showImportError(msg){
+    var el = document.getElementById("import-error");
+    el.textContent = msg || "";
+    el.hidden = !msg;
+  }
+
+  function openImportModal(){
+    IMPORT_STATE = null;
+    document.getElementById("import-file-input").value = "";
+    document.getElementById("import-map-area").hidden = true;
+    document.getElementById("import-summary").textContent = "";
+    document.getElementById("import-confirm").disabled = true;
+    showImportError("");
+    document.getElementById("import-modal").classList.add("is-open");
+  }
+  function closeImportModal(){
+    document.getElementById("import-modal").classList.remove("is-open");
+  }
+
+  function updateImportValidity(){
+    var ok = !!(IMPORT_STATE && IMPORT_STATE.mapping.firm >= 0 && IMPORT_STATE.mapping.role >= 0 && IMPORT_STATE.rows.length > 0);
+    document.getElementById("import-confirm").disabled = !ok;
+  }
+
+  function renderImportMapping(){
+    var grid = document.getElementById("import-map-grid");
+    var html = "";
+    IMPORT_FIELDS.forEach(function(f){
+      var guess = guessColumn(IMPORT_STATE.headers, f.aliases);
+      html += '<label for="import-col-' + f.key + '">' + esc(f.label) + "</label>";
+      html += '<select id="import-col-' + f.key + '" data-field="' + f.key + '"><option value="-1">— none —</option>';
+      IMPORT_STATE.headers.forEach(function(h, idx){
+        html += '<option value="' + idx + '"' + (idx === guess ? " selected" : "") + '>' + esc(h || "(column " + (idx + 1) + ")") + "</option>";
+      });
+      html += "</select>";
+    });
+    grid.innerHTML = html;
+    IMPORT_STATE.mapping = {};
+    IMPORT_FIELDS.forEach(function(f){
+      IMPORT_STATE.mapping[f.key] = +document.getElementById("import-col-" + f.key).value;
+    });
+    Array.prototype.forEach.call(grid.querySelectorAll("select"), function(sel){
+      sel.addEventListener("change", function(){
+        IMPORT_STATE.mapping[sel.dataset.field] = +sel.value;
+        renderImportPreview();
+        updateImportValidity();
+      });
+    });
+  }
+
+  function renderImportPreview(){
+    var table = document.getElementById("import-preview-table");
+    var sample = IMPORT_STATE.rows.slice(0, 5);
+    var html = "<thead><tr>";
+    IMPORT_FIELDS.forEach(function(f){ html += "<th>" + esc(f.label.replace(" *", "")) + "</th>"; });
+    html += "</tr></thead><tbody>";
+    sample.forEach(function(row){
+      html += "<tr>";
+      IMPORT_FIELDS.forEach(function(f){
+        var idx = IMPORT_STATE.mapping[f.key];
+        html += "<td>" + esc(idx >= 0 ? (row[idx] || "") : "") + "</td>";
+      });
+      html += "</tr>";
+    });
+    table.innerHTML = html + "</tbody>";
+    document.getElementById("import-summary").textContent =
+      IMPORT_STATE.rows.length + " row" + (IMPORT_STATE.rows.length === 1 ? "" : "s") + " found — showing first " + sample.length + ".";
+  }
+
+  function handleImportFile(file){
+    showImportError("");
+    var reader = new FileReader();
+    reader.onload = function(){
+      var text = String(reader.result || "").replace(/^\uFEFF/, "");
+      var parsed;
+      try { parsed = parseCSV(text); } catch (e) { parsed = {headers:[], rows:[]}; }
+      if (!parsed.headers.length || !parsed.rows.length) {
+        showImportError("Couldn't find any rows in that file. Make sure it's the CSV itself (not the .zip it came in).");
+        document.getElementById("import-map-area").hidden = true;
+        document.getElementById("import-confirm").disabled = true;
+        return;
+      }
+      IMPORT_STATE = {headers:parsed.headers, rows:parsed.rows, mapping:{}};
+      document.getElementById("import-map-area").hidden = false;
+      renderImportMapping();
+      renderImportPreview();
+      updateImportValidity();
+    };
+    reader.onerror = function(){ showImportError("Couldn't read that file — please try again."); };
+    reader.readAsText(file);
+  }
+
+  function runImport(){
+    if (!IMPORT_STATE) return;
+    var m = IMPORT_STATE.mapping;
+    var track = document.getElementById("import-track-select").value;
+    var dateKind = document.getElementById("import-datekind-select").value;
+
+    var existingKeys = {};
+    STATE.applications.forEach(function(a){
+      if (a.link) existingKeys["link:" + normalizeUrl(a.link).toLowerCase()] = true;
+      existingKeys["fr:" + (a.firm || "").trim().toLowerCase() + "|" + (a.role || "").trim().toLowerCase()] = true;
+    });
+
+    var toAdd = [];
+    var added = 0, skippedDup = 0;
+    IMPORT_STATE.rows.forEach(function(row){
+      var firm = (m.firm >= 0 ? (row[m.firm] || "") : "").trim();
+      var role = (m.role >= 0 ? (row[m.role] || "") : "").trim();
+      var link = (m.link >= 0 ? (row[m.link] || "") : "").trim();
+      var dateRaw = (m.date >= 0 ? (row[m.date] || "") : "").trim();
+      if (!firm && !role) return;
+      var linkKey = link ? "link:" + normalizeUrl(link).toLowerCase() : null;
+      var frKey = "fr:" + firm.toLowerCase() + "|" + role.toLowerCase();
+      if ((linkKey && existingKeys[linkKey]) || existingKeys[frKey]) { skippedDup++; return; }
+      if (linkKey) existingKeys[linkKey] = true;
+      existingKeys[frKey] = true;
+
+      var item = newApplication();
+      item.firm = firm;
+      item.role = role;
+      item.link = link;
+      item.track = track;
+      var isoDate = normalizeImportDate(dateRaw);
+      if (dateKind === "applied") {
+        item.status = "Applied";
+        if (isoDate) item.applied = isoDate;
+      }
+      var noteBits = ["Imported from LinkedIn"];
+      if (dateRaw) noteBits.push((dateKind === "applied" ? "applied" : "saved") + " " + dateRaw);
+      item.notes = noteBits.join(" — ");
+      toAdd.push(item);
+      added++;
+    });
+
+    toAdd.reverse();
+    toAdd.forEach(function(item){ STATE.applications.unshift(item); });
+    mount();
+    scheduleSave();
+    closeImportModal();
+    var msg = "Imported " + added + " application" + (added === 1 ? "" : "s");
+    if (skippedDup) msg += ", skipped " + skippedDup + " already on your list";
+    showToast(msg + ".");
+  }
+
+  (function setupImportModal(){
+    var modal = document.getElementById("import-modal");
+    var fileInput = document.getElementById("import-file-input");
+    document.getElementById("import-modal-close").addEventListener("click", closeImportModal);
+    document.getElementById("import-cancel").addEventListener("click", closeImportModal);
+    document.getElementById("import-confirm").addEventListener("click", runImport);
+    modal.addEventListener("click", function(e){ if (e.target === modal) closeImportModal(); });
+    fileInput.addEventListener("change", function(){
+      if (fileInput.files && fileInput.files[0]) handleImportFile(fileInput.files[0]);
+    });
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape" && modal.classList.contains("is-open")) closeImportModal();
+    });
+  })();
 
   var STYLE_TEXT = document.querySelector("style").textContent;
 

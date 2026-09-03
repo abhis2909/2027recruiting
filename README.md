@@ -36,6 +36,16 @@ Login is off by default — the site works exactly as described above until you 
 
 Once this is set up, anyone with the link can sign in with their own Google account and get their own private applications/contacts list, saved to Firestore. If you already had data saved locally in your browser before signing in for the first time, it's automatically carried over into your new account.
 
+## Importing from LinkedIn
+
+LinkedIn doesn't offer a way to auto-sync your Saved Jobs into a third-party site (no public API for it, and scraping it would violate their terms), but you can pull your saved/applied jobs in with a couple of manual steps:
+
+1. On LinkedIn: **Settings & Privacy → Data privacy → Get a copy of your data** → request an export that includes "Saved Jobs" (or "Job Applications" if you want your applied-to jobs instead). LinkedIn emails you a download link, usually within a few minutes to a day.
+2. Unzip it and find `Saved Jobs.csv` (or `Job Applications.csv`).
+3. In Coverage Book, go to the **Pipeline** tab → **⇪ Import CSV**, choose the file, check that the column mapping (Company/Role/Link/Date) looks right — it auto-guesses but you can override each dropdown — and click **Import**.
+
+It works with any CSV that has company/role columns, not just LinkedIn's, and re-importing the same file won't create duplicates (it matches on link or firm+role).
+
 ## Deploying to Vercel
 
 1. Go to [vercel.com/new](https://vercel.com/new) and import this GitHub repository (`abhis2909/2027recruiting`).
