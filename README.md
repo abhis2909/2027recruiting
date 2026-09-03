@@ -10,10 +10,6 @@ A single-page recruiting tracker (applications + networking contacts) for the 20
 
 By default (no login configured), data is saved to your browser's `localStorage`, so it persists between visits on the same device/browser but won't sync across devices or be shared with anyone else. Turn on **Google sign-in** (below) if you want to share the site with classmates and have each person keep their own private, cloud-saved list.
 
-## Hovering to preview an application link
-
-On a desktop/laptop (any pointer with hover), hovering over a 🔗 link pill opens a slide-in panel on the right with the link loaded in an iframe, plus an "Open in new tab" fallback. Some employer sites (Workday, Greenhouse, etc.) block being framed by other pages — the panel will show blank for those, but the fallback link still works. On phones/touch, links just open in a new tab as usual since there's no hover.
-
 ## Turning on Google sign-in (so classmates can each have their own tracker)
 
 Login is off by default — the site works exactly as described above until you turn it on. Turning it on requires a free [Firebase](https://firebase.google.com) project (Google's backend-as-a-service; no cost at this scale):
